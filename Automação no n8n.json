@@ -1,0 +1,293 @@
+{
+  "name": "Automação no n8n",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {},
+        "options": {
+          "dataPropertyAttachmentsPrefixName": "anexo",
+          "downloadAttachments": true
+        }
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -336,
+        -128
+      ],
+      "id": "f87dbf0d-0b2a-444a-9976-5a8185448c4a",
+      "name": "Gmail Trigger",
+      "alwaysOutputData": false,
+      "retryOnFail": true,
+      "notesInFlow": true,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "NT7HNdKUROacMqVS",
+          "name": "Conta - Gmail"
+        }
+      },
+      "notes": "Mensagem recebida.\n"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ceaa9369-4e15-4eb2-b785-6c770d6ac0ab",
+              "leftValue": "={{ $binary.anexo }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -160,
+        -128
+      ],
+      "id": "e84d6ca0-a110-4c93-a636-1a04c66e0105",
+      "name": "Gateway: Anexos",
+      "notesInFlow": true,
+      "alwaysOutputData": false,
+      "executeOnce": false,
+      "retryOnFail": true,
+      "notes": "Valida se existem anexos"
+    },
+    {
+      "parameters": {
+        "jsCode": "let results = [];\n\nfor (const item of items) {\n    if (item.binary) {\n        for (const key of Object.keys(item.binary)) {\n            results.push({\n                json: {\n                    fileName: item.binary[key].filename\n                },\n                binary: {\n                    anexo: item.binary[key], //renomeia o binary\n                }\n            });\n        }\n    }\n}\n\nreturn results;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        112,
+        -320
+      ],
+      "id": "e18e3f03-2411-41bd-afcd-6dd38336019f",
+      "name": "Nodo de integração",
+      "notesInFlow": true,
+      "retryOnFail": true,
+      "notes": "Percorre todos os anexos em loop, reunindo-os em uma lista única.\n"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Gmail Trigger').item.json.headers.from }}",
+        "subject": "Aviso automático: e-mail sem anexo",
+        "emailType": "text",
+        "message": "=Olá, {{ $json.from.value[0].name }}!\n\nTudo certo por aí? Espero que sim.\n\nRecebemos sua solicitação, porém não havia nenhum anexo incluído na mensagem.\n\nPor gentileza, pedimos que verifique e reenvie novamente com o arquivo anexado.\n\nObrigado!\n\nAtenciosamente,\nTime Onfly.\n",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        112,
+        -112
+      ],
+      "id": "1d0fe79c-e636-47ff-8ac3-8c426c2962f6",
+      "name": "Nodo de mensagem: Anexo não localizado",
+      "webhookId": "bd7553c1-6f4d-43ad-aa87-571c496b97a9",
+      "notesInFlow": true,
+      "retryOnFail": true,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "NT7HNdKUROacMqVS",
+          "name": "Conta - Gmail"
+        }
+      },
+      "notes": "Retorno caso não haja anexo."
+    },
+    {
+      "parameters": {
+        "inputDataFieldName": "anexo",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1agON5UaeoenV_sCv7u2H4Y9qStd4tkDv",
+          "mode": "list",
+          "cachedResultName": "uploadArquivos",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1agON5UaeoenV_sCv7u2H4Y9qStd4tkDv"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        320,
+        -320
+      ],
+      "id": "0b27fa6f-a18e-4dfc-b3c9-13742c0465ff",
+      "name": "Nodo de arquivo: upload",
+      "notesInFlow": true,
+      "retryOnFail": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "UT90KanjDA0lDttU",
+          "name": "Google Drive account"
+        }
+      },
+      "notes": "Realiza o Upload dos arquivos baixados para uma pasta no Drive chamada \"uploadArquivos\""
+    },
+    {
+      "parameters": {
+        "url": "https://open.er-api.com/v6/latest/USD",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        512,
+        -320
+      ],
+      "id": "22c67c2d-b857-4558-bde8-d5a4e893977f",
+      "name": "Nodo: HTTP Request",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Gmail Trigger').item.json.headers.from }}",
+        "subject": "Confirmação de conclusão do processo!",
+        "emailType": "text",
+        "message": "=Olá, {{ $('Gmail Trigger').item.json.from.value[0].name }}!\n\nTudo certo por aí? Espero que sim.\n\nConfirmamos que o processo solicitado foi concluído com sucesso! 🎉\n\nA título de informação, a cotação do dólar (USD → BRL) no dia de hoje é: 1 USD = R$ {{ $json.rates.BRL }}\n\nAgradecemos o contato e permanecemos à disposição.\n\nAtenciosamente,\nTime Onfly.",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        704,
+        -320
+      ],
+      "id": "54d7f661-fe9f-40d2-8914-14aa177175f1",
+      "name": "Nodo de mensagem: concluído",
+      "webhookId": "bd7553c1-6f4d-43ad-aa87-571c496b97a9",
+      "retryOnFail": true,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "NT7HNdKUROacMqVS",
+          "name": "Conta - Gmail"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Nodo: HTTP Request": [
+      {
+        "json": {
+          "name": "First item",
+          "code": 1
+        }
+      },
+      {
+        "json": {
+          "name": "Second item",
+          "code": 2
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Gateway: Anexos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gateway: Anexos": {
+      "main": [
+        [
+          {
+            "node": "Nodo de integração",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Nodo de mensagem: Anexo não localizado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nodo de integração": {
+      "main": [
+        [
+          {
+            "node": "Nodo de arquivo: upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nodo de arquivo: upload": {
+      "main": [
+        [
+          {
+            "node": "Nodo: HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nodo: HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Nodo de mensagem: concluído",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "12a167ef-b789-4fc7-9f1e-90be60506fe6",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e799163f3fb168c3bc33a54a15dbe0f23135de1c70aaba4b812d0003a2ca2c61"
+  },
+  "id": "3Adx4XHaCu4JOknH",
+  "tags": []
+}
