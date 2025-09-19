@@ -1,128 +1,95 @@
-📄 README – Automação de E-mails com Anexos no n8n
+README – Automação de E-mails com Anexos no n8n
 
+1. Visão Geral
 
-Este workflow foi desenvolvido no n8n para automatizar o tratamento de e-mails recebidos via Gmail.
-Ele executa diferentes ações dependendo da presença ou não de anexos:
+Este workflow implementa uma automação no n8n para tratamento de e-mails recebidos via Gmail.
+A automação diferencia e-mails com anexos de e-mails sem anexos, executando rotinas distintas para cada caso.
 
-📎 Se houver anexo:
+E-mails com anexo:
 
-Processa e padroniza os arquivos.
+Processamento e normalização dos arquivos.
 
-Faz upload para uma pasta específica no Google Drive.
+Upload dos anexos em uma pasta do Google Drive.
 
-Consulta a cotação do dólar em uma API pública.
+Consulta de cotação do dólar via API externa.
 
-Envia e-mail de confirmação ao remetente, incluindo a taxa atual.
+Envio de e-mail de confirmação ao remetente, incluindo a cotação.
 
-⚠️ Se não houver anexo:
+E-mails sem anexo:
 
-Envia automaticamente uma mensagem solicitando reenvio com o arquivo.
+Envio de aviso automático solicitando reenvio com o arquivo.
 
-🛠 Fluxo do Processo
-Estrutura Geral
-📥 Gmail Trigger
-        │
-        ▼
-🔀 Gateway: Anexos ─── (false) ──▶ 📧 E-mail: Anexo não localizado
-        │
-       (true)
-        ▼
-🧩 Nodo de integração ─▶ ☁️ Upload Google Drive ─▶ 🌐 HTTP Request ─▶ 📧 E-mail: Concluído
+2. Fluxo do Processo
+Gmail Trigger
+      │
+      ▼
+IF "Gateway: Anexos" ─── (False) ──▶ Gmail: Anexo não localizado
+       │
+      (True)
+       ▼
+Code: Integração ─▶ Google Drive: Upload ─▶ HTTP Request ─▶ Gmail: Concluído
 
-🔩 Detalhes dos Nós
-1. Gmail Trigger (Entrada)
+3. Detalhamento dos Nós
+3.1 Gmail Trigger
 
-Função: Dispara o fluxo quando chega um novo e-mail.
+Dispara a automação ao receber novos e-mails.
 
-Configuração:
+Configurações principais:
 
-Baixa os anexos automaticamente (downloadAttachments: true).
+downloadAttachments: true
 
-Salva-os com prefixo anexo (dataPropertyAttachmentsPrefixName).
+dataPropertyAttachmentsPrefixName: "anexo"
 
-Observação: Puxa também informações do remetente para respostas automáticas.
+Também captura remetente para respostas automáticas.
 
-2. Gateway: Anexos (Decisão)
+3.2 IF – Gateway: Anexos
 
-Função: Verifica se existe conteúdo em {{$binary.anexo}}.
+Avalia se existe conteúdo em {{$binary.anexo}}.
 
 Encaminhamentos:
 
-✅ True: Segue para processar anexos.
+True: segue para processamento dos anexos.
 
-❌ False: Vai direto para o envio do e-mail de alerta (“Anexo não localizado”).
+False: envia resposta de “Anexo não localizado”.
 
-3. Nodo de Integração (Code Node)
+3.3 Code – Integração
 
-Função: Percorre todos os binários (arquivos anexados), normaliza-os e renomeia para anexo.
+Itera sobre os anexos recebidos, normalizando-os para o campo binary.anexo.
 
-Exemplo de código:
+Adiciona no JSON o nome de cada arquivo (json.fileName).
 
-for (const item of items) {
-  if (item.binary) {
-    for (const key of Object.keys(item.binary)) {
-      results.push({
-        json: { fileName: item.binary[key].filename },
-        binary: { anexo: item.binary[key] }
-      });
-    }
-  }
-}
-return results;
+3.4 Google Drive – Upload
 
+Recebe os binários de anexos e realiza upload em uma pasta definida do Drive.
 
-Benefício: Facilita o uso do mesmo campo “anexo” nos próximos nós.
+Pasta configurada: uploadArquivos (ID fixo).
 
-4. Google Drive: Upload
+3.5 HTTP Request
 
-Função: Faz upload dos anexos para a pasta definida no Drive.
+Executa chamada para API de câmbio.
 
-Entrada esperada: binary.anexo (do passo anterior).
+Endpoint utilizado: https://open.er-api.com/v6/latest/USD.
 
-Destino configurado: Pasta uploadArquivos (com ID fixo).
+O campo rates.BRL é usado na resposta final ao remetente.
 
-5. HTTP Request
+3.6 Gmail – Mensagem de Conclusão
 
-Função: Chamada externa para API de câmbio.
+Envia confirmação ao remetente.
 
-Endpoint: https://open.er-api.com/v6/latest/USD
+Inclui a informação de cotação obtida na etapa anterior.
 
-Resultado usado: {{ $json.rates.BRL }} para cotação USD → BRL.
+3.7 Gmail – Mensagem: Anexo não localizado
 
-6. Gmail: Mensagem de Conclusão
+Responde automaticamente ao remetente informando ausência de anexo.
 
-Função: Confirma sucesso da automação.
+Solicita reenvio do e-mail com o arquivo.
 
-Mensagem enviada ao remetente:
+4. Pré-requisitos
 
-Olá, [Nome do remetente]!
+Conta Gmail com autenticação OAuth2 configurada no n8n.
 
-Confirmamos que o processo foi concluído com sucesso 🎉
-Cotação atual: 1 USD = R$ [valor da API]
+Conta Google Drive com autenticação OAuth2 configurada.
 
-Obrigado!
+Workflow ativo e credenciais validadas.
 
-
-7. Gmail: Anexo não localizado
-
-Função: Retorna ao remetente caso não haja anexos.
-
-Mensagem enviada:
-
-Olá, [Nome do remetente]!
-
-Recebemos sua solicitação, mas não havia nenhum anexo.
-Por favor, reenvie com o arquivo.
-
-Obrigado!
-
-
-📂 Pré-requisitos
-
-Conta Gmail com OAuth2 configurado.
-
-Conta Google Drive com OAuth2 e permissão na pasta de destino.
-
-Workflow ativo no n8n.
-
-O ambiente está sendo executado via Docker
+O ambiente foi executado via Docker
